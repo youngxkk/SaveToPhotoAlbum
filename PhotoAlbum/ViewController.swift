@@ -11,10 +11,6 @@ import UIKit
 import Photos
 import MobileCoreServices
 
-//添加代理：
-//UIImagePickerControllerDelegate，
-//UINavigationControllerDelegate
-
 class ViewController: UIViewController {
 
     let buttonn = UIButton()
@@ -52,6 +48,22 @@ class ViewController: UIViewController {
     }
 
     
+    
+    //保存照片到系统相册-done
+    @objc func savePhotoAlbum() {
+        PHPhotoLibrary.shared().performChanges({
+            PHAssetChangeRequest.creationRequestForAsset(from: self.img!)
+        }) { (isSuccess: Bool, error: Error?) in
+            if isSuccess {
+                print("照片保存成功!")
+            } else{
+                print("照片保存失败!", error!.localizedDescription)
+            }
+        }
+    }
+    
+    
+    
     //打开相册的方法，我也不知道为啥要带@objc，不带就报错。-done
     @objc func openPhotoAlbum(){
         let pickImageController:UIImagePickerController=UIImagePickerController.init()
@@ -77,38 +89,114 @@ class ViewController: UIViewController {
         }
     }
 
-    //去设置相册权限（如果没有权限的话）-done
-    @objc func gotoSetting(){
-        let alertController:UIAlertController=UIAlertController.init(title: "去开启相册权限", message: "桌面-设置-通用-权限管理", preferredStyle: UIAlertControllerStyle.alert)
-        let sure:UIAlertAction=UIAlertAction.init(title: "去开启权限", style: UIAlertActionStyle.default) { (ac) in
-            let url=URL.init(string: UIApplicationOpenSettingsURLString)
-            if UIApplication.shared.canOpenURL(url!){
-                UIApplication.shared.open(url!, options: [:], completionHandler: { (ist) in
+    
+    
+    //判断及设置相册权限-done
+    @objc func goToSettingPhoto()->Bool{
+        let status = PHPhotoLibrary.authorizationStatus()
+        
+        switch status {
+        case .authorized:
+            return true
+            
+        case .notDetermined:
+            // 请求授权
+            PHPhotoLibrary.requestAuthorization({ (status) -> Void in
+                DispatchQueue.main.async(execute: { () -> Void in
+                    _ = self.goToSettingPhoto()
                 })
-            }
+            })
+            
+        default: ()
+        DispatchQueue.main.async(execute: { () -> Void in
+            let alertController = UIAlertController(title: "照片访问受限",
+                                                    message: "点击“设置”，允许访问您的照片",
+                                                    preferredStyle: .alert)
+            
+            let cancelAction = UIAlertAction(title:"取消", style: .cancel, handler:nil)
+            
+            let settingsAction = UIAlertAction(title:"设置", style: .default, handler: {
+                (action) -> Void in
+                let url = URL(string: UIApplicationOpenSettingsURLString)
+                if let url = url, UIApplication.shared.canOpenURL(url) {
+                    if #available(iOS 10, *) {
+                        UIApplication.shared.open(url, options: [:],
+                                                  completionHandler: {
+                                                    (success) in
+                        })
+                    } else {
+                        UIApplication.shared.openURL(url)
+                    }
+                }
+            })
+            
+            alertController.addAction(cancelAction)
+            alertController.addAction(settingsAction)
+            
+            self.present(alertController, animated: true, completion: nil)
+        })
         }
-        alertController.addAction(sure)
-        self.present(alertController, animated: true) {
-        }
+        return false
     }
+    
+    
+    
+    //申请麦克风权限-done
+    func goToSetMicro()->Bool{
+        let status = AVCaptureDevice.authorizationStatus(for: AVMediaType.audio)
+        
+        switch status {
+        case .authorized:
+            return true
+            
+        case .notDetermined:
+            // 请求授权
+            AVCaptureDevice.requestAccess(for: AVMediaType.audio, completionHandler: {
+                (status) in
+                DispatchQueue.main.async(execute: { () -> Void in
+                    _ = self.goToSetMicro()
+                })
+            })
+        default: ()
+        DispatchQueue.main.async(execute: { () -> Void in
+            let alertController = UIAlertController(title: "麦克风访问受限",
+                                                    message: "点击“设置”，允许访问您的麦克风",
+                                                    preferredStyle: .alert)
+            
+            let cancelAction = UIAlertAction(title:"取消", style: .cancel, handler:nil)
+            
+            let settingsAction = UIAlertAction(title:"设置", style: .default, handler: {
+                (action) -> Void in
+                let url = URL(string: UIApplicationOpenSettingsURLString)
+                if let url = url, UIApplication.shared.canOpenURL(url) {
+                    if #available(iOS 10, *) {
+                        UIApplication.shared.open(url, options: [:],
+                                                  completionHandler: {
+                                                    (success) in
+                        })
+                    } else {
+                        UIApplication.shared.openURL(url)
+                    }
+                }
+            })
+            
+            alertController.addAction(cancelAction)
+            alertController.addAction(settingsAction)
+            
+            self.present(alertController, animated: true, completion: nil)
+        })
+        }
+        return false
+    }
+    
+    
     
     //保存视频到系统相册-没测试
     @objc func saveVideoAlbum(videoPath: String, didFinishSavingWithError error: NSError, contextInfo info: AnyObject) {
         print("视频保存成功")
     }
     
-    //保存照片到系统相册-done
-    @objc func savePhotoAlbum() {
-        PHPhotoLibrary.shared().performChanges({
-            PHAssetChangeRequest.creationRequestForAsset(from: self.img!)
-        }) { (isSuccess: Bool, error: Error?) in
-            if isSuccess {
-                print("照片保存成功!")
-            } else{
-                print("照片保存失败!", error!.localizedDescription)
-            }
-        }
-    }
+
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
