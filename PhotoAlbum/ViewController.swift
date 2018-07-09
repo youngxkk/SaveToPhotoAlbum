@@ -10,13 +10,15 @@ import AVFoundation
 import UIKit
 import Photos
 import MobileCoreServices
+import EventKit
 
 class ViewController: UIViewController {
 
     let buttonn = UIButton()
     let buttonn2 = UIButton()
     let img = UIImage(named: "testpic")
-
+    let eventStore = EKEventStore()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -142,7 +144,7 @@ class ViewController: UIViewController {
     
     
     //申请麦克风权限-done
-    func goToSetMicro()->Bool{
+    func getMicro()->Bool{
         let status = AVCaptureDevice.authorizationStatus(for: AVMediaType.audio)
         
         switch status {
@@ -154,7 +156,7 @@ class ViewController: UIViewController {
             AVCaptureDevice.requestAccess(for: AVMediaType.audio, completionHandler: {
                 (status) in
                 DispatchQueue.main.async(execute: { () -> Void in
-                    _ = self.goToSetMicro()
+                    _ = self.getMicro()
                 })
             })
         default: ()
@@ -189,6 +191,48 @@ class ViewController: UIViewController {
         return false
     }
     
+    
+    
+    //获取日历权限
+    func getCanlender(){
+        // 'EKEntityType.reminder' or 'EKEntityType.event'
+        eventStore.requestAccess(to: .event, completion: {
+            granted, error in
+            if (granted) && (error == nil) {
+                print("granted \(granted)")
+                print("error  \(String(describing: error))")
+            
+                // 新建一个事件
+                let event:EKEvent = EKEvent(eventStore: self.eventStore)
+                event.title = "新增一个测试事件"
+                event.startDate = Date()
+                event.endDate = Date()
+                event.notes = "这个是备注"
+                event.calendar = self.eventStore.defaultCalendarForNewEvents
+                
+                do{
+                    try self.eventStore.save(event, span: .thisEvent)
+                    print("Saved Event")
+                }catch{}
+                
+                // 获取所有的事件（前后90天）
+                let startDate = Date().addingTimeInterval(-3600*24*90)
+                let endDate = Date().addingTimeInterval(3600*24*90)
+                let predicate2 = self.self.eventStore.predicateForEvents(withStart: startDate,
+                                                               end: endDate, calendars: nil)
+                
+                print("查询范围 开始:\(startDate) 结束:\(endDate)")
+                
+                if let eV = self.eventStore.events(matching: predicate2) as [EKEvent]? {
+                    for i in eV {
+                        print("标题  \(i.title)" )
+                        print("开始时间: \(i.startDate)" )
+                        print("结束时间: \(i.endDate)" )
+                    }
+                }
+            }
+        })
+    }
     
     
     //保存视频到系统相册-没测试
